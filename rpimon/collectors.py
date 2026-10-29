@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import math
 import random
+import shutil
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,6 +25,27 @@ class FanReading:
         if not vals:
             return None
         return any(v > 0 for v in vals)
+
+
+_NOW_FLAGS = {0: "sous-tension", 1: "fréq. bridée", 2: "throttle", 3: "limite temp"}
+_PAST_SHIFT = 16  # bits 16..19 : même événement, survenu depuis le boot
+
+
+@dataclass(frozen=True)
+class Throttle:
+    now: tuple[str, ...]  # en cours
+    since_boot: tuple[str, ...]  # survenus depuis le démarrage
+
+    @property
+    def active(self) -> bool:
+        return bool(self.now)
+
+
+def parse_throttled(raw: int) -> Throttle:
+    """Décode le registre `get_throttled` du firmware Pi."""
+    now = tuple(n for b, n in _NOW_FLAGS.items() if raw >> b & 1)
+    past = tuple(n for b, n in _NOW_FLAGS.items() if raw >> (b + _PAST_SHIFT) & 1)
+    return Throttle(now, past)
 
 
 def _read_int(path: Path | None) -> int | None:
@@ -64,6 +87,7 @@ class LinuxSensors:
         self._fan_hwmon: Path | None = None
         self._cooling: Path | None = None
         self._temp_hwmon: Path | None = None
+        self._throttle_file: Path | None = None
         self.detect()
         psutil.cpu_percent(interval=None)  # amorce : le 1er appel ne vaut rien
 
@@ -71,6 +95,9 @@ class LinuxSensors:
         self._fan_hwmon = find_hwmon("pwmfan", self.root / "class/hwmon")
         self._temp_hwmon = find_hwmon("cpu_thermal", self.root / "class/hwmon")
         self._cooling = find_cooling_device("pwm-fan", self.root / "class/thermal")
+        plat = self.root / "devices/platform"
+        self._throttle_file = next(
+            iter([*plat.glob("*/get_throttled"), *plat.glob("*/*/get_throttled")]), None)
 
     def cpu_percent(self) -> float | None:
         try:
@@ -96,6 +123,20 @@ class LinuxSensors:
         if v is None and self._temp_hwmon:
             v = _read_int(self._temp_hwmon / "temp1_input")
         return None if v is None else v / 1000.0
+
+    def throttled(self) -> int | None:
+        raw = _read_str(self._throttle_file) if self._throttle_file else None
+        if raw is None and self.root == SYS and shutil.which("vcgencmd"):
+            try:  # lecture seule, sans sudo
+                out = subprocess.run(["vcgencmd", "get_throttled"], capture_output=True,
+                                     text=True, timeout=2).stdout
+                raw = out.split("=")[-1].strip()
+            except (OSError, subprocess.SubprocessError):
+                return None
+        try:
+            return None if raw is None else int(raw, 0)
+        except ValueError:
+            return int(raw, 16) if raw else None
 
     def fan(self) -> FanReading:
         h = self._fan_hwmon
@@ -135,6 +176,9 @@ class DemoSensors:
         target = 38 + 0.45 * self._cpu
         self._temp += (target - self._temp) * 0.05 + random.uniform(-0.3, 0.3)
         return self._temp
+
+    def throttled(self) -> int:
+        return 0x8 if self._temp > 54 else 0
 
     def fan(self) -> FanReading:
         on = self._temp > 52 or math.isclose(self._temp, 52, abs_tol=0.5)

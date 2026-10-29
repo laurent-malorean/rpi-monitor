@@ -4,7 +4,7 @@ from __future__ import annotations
 import threading
 import time
 
-from .collectors import DemoSensors, LinuxSensors
+from .collectors import DemoSensors, LinuxSensors, parse_throttled
 from .history import BucketSeries, RingBuffer
 
 HISTORY_S = 30 * 60
@@ -21,8 +21,10 @@ class Monitor:
             "freq": RingBuffer(HISTORY_S),
             "ram": RingBuffer(HISTORY_S),
             "fan": BucketSeries(bucket_s=10, maxlen=HISTORY_S // 10),
+            "throttle": BucketSeries(bucket_s=10, maxlen=HISTORY_S // 10),
         }
         self.fan_last = None
+        self.throttle_last = None
         self._lock = threading.Lock()
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._run, name="collector", daemon=True)
@@ -67,9 +69,13 @@ class Monitor:
                     "freq": self._safe(self.sensors.cpu_freq_mhz),
                     "ram": self._safe(self.sensors.ram_percent),
                 }
+                raw = self._safe(getattr(self.sensors, "throttled", lambda: None))
+                thr = None if raw is None else parse_throttled(raw)
                 with self._lock:
                     for k, v in vals.items():
                         self.series[k].add(v)
+                    self.throttle_last = thr
+                    self.series["throttle"].add(now, None if thr is None else thr.active)
             tick += 1
             next_t += FAST_S
             self._stop.wait(max(0.0, next_t - time.monotonic()))

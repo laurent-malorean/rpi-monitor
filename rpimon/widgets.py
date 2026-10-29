@@ -25,6 +25,15 @@ class Spec:
     min_span: float = 10.0  # amplitude minimale en échelle auto
     bars: bool = False  # histogramme (ventilateur) plutôt que courbe
     step_s: float = 1.0  # pas d'échantillonnage des valeurs stockées
+    compact: bool = False  # sans gros chiffre : ligne plus basse
+
+
+def throttle_summary(thr) -> str:
+    if thr is None:
+        return "N/A"
+    if thr.now:
+        return "+".join(thr.now)
+    return f"OK (déjà: {'+'.join(thr.since_boot)})" if thr.since_boot else "OK"
 
 
 def auto_scale(values: list[float], min_span: float) -> tuple[float, float]:
@@ -139,7 +148,8 @@ class Lane(Widget):
     """Une ligne : indicateur en gros à gauche, courbe temporelle à droite."""
 
     DEFAULT_CSS = """
-    Lane { height: 1fr; border-top: solid $panel; }
+    Lane { height: 1fr; }
+    Lane.compact { height: 5; }
     Lane .left { width: 30; padding: 0 1; }
     Lane .title { text-style: bold; }
     Lane Digits { height: 3; }
@@ -147,14 +157,15 @@ class Lane(Widget):
     """
 
     def __init__(self, spec: Spec):
-        super().__init__()
+        super().__init__(classes="compact" if spec.compact else "")
         self.spec = spec
 
     def compose(self) -> ComposeResult:
         with Horizontal():
             with Vertical(classes="left"):
                 yield Static(f"{self.spec.title} ({self.spec.unit})", classes="title")
-                yield Digits("--", classes="big")
+                if not self.spec.compact:
+                    yield Digits("--", classes="big")
                 yield Static("", classes="stats")
             yield Chart(self.spec)
 
@@ -163,5 +174,6 @@ class Lane(Widget):
         chart.values = values
         chart.window_s = window_s
         chart.refresh()
-        self.query_one(Digits).update(big)
+        if not self.spec.compact:
+            self.query_one(Digits).update(big)
         self.query_one(".stats", Static).update(stats)

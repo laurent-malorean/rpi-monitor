@@ -11,12 +11,14 @@ from textual.app import App, ComposeResult
 from textual.widgets import Footer, Header
 
 from rpimon.monitor import Monitor
-from rpimon.widgets import Lane, Spec
+from rpimon.widgets import Lane, Spec, throttle_summary
 
 SPECS = [
     Spec("cpu", "CPU", "%", "green", decimals=0, fixed=(0, 100)),
     Spec("temp", "Température", "°C", "red", decimals=1, min_span=10),
     Spec("freq", "Fréquence", "MHz", "cyan", decimals=0, min_span=400),
+    Spec("throttle", "Throttling", "flags", "bright_red", bars=True, fixed=(0, 1),
+         step_s=10.0, compact=True),
     Spec("ram", "RAM", "%", "magenta", decimals=1, fixed=(0, 100)),
     Spec("fan", "Ventilateur", "tr/min", "yellow", bars=True, fixed=(0, 1), step_s=10.0),
 ]
@@ -72,7 +74,11 @@ class MonitorApp(App):
         for lane in self.query(Lane):
             sp = lane.spec
             values, last, st = self.monitor.snapshot(sp.key)
-            if sp.bars:
+            if sp.key == "throttle":
+                thr = self.monitor.throttle_last
+                big = "--" if thr is None else str(len(thr.now))
+                stats = throttle_summary(thr)
+            elif sp.bars:
                 fan = self.monitor.fan_last
                 rpm = fan.rpm if fan else None
                 state = "ON" if fan and fan.active else "OFF" if fan and fan.active is not None else "N/A"

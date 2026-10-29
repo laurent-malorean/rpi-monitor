@@ -7,3 +7,5 @@
 - **Ventilateur** : `pwm1` et `fan1_input` peuvent valoir 0 alors qu'il tourne ; croiser avec `cooling_device*/cur_state`.
 - **Collecte** : thread séparé de l'UI ; un capteur qui lève une exception donne `None`, jamais un arrêt de la collecte.
 - **Fichiers non versionnés** : captures d'écran et `.DS_Store` ignorés par git.
+- **Throttling Pi** : lire `get_throttled` en sysfs (`devices/platform/*/get_throttled`) avant de lancer `vcgencmd` ; le fallback `vcgencmd` n'est tenté que sur le vrai `/sys` pour que les tests ne dépendent pas de la machine.
+- **Lignes compactes** : une ligne binaire (throttling) n'a pas besoin du gros chiffre ; `Spec.compact` la ramène à 5 lignes pour que 6 indicateurs tiennent dans ~35 lignes de terminal.
