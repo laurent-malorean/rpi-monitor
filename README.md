@@ -5,6 +5,8 @@ Dashboard TUI (Textual) de monitoring Raspberry Pi 5, en lecture seule, sans sud
 6 lignes empilées : valeur actuelle en gros à gauche (+ min/max/moyenne), courbe temporelle à droite.
 CPU %, température, fréquence CPU, throttling, RAM %, ventilateur (histogrammes par périodes de 10 s).
 
+![Dashboard rpi-monitor](screen.png)
+
 ## Lancement
 
 ```
