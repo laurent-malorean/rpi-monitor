@@ -2,8 +2,17 @@
 
 Dashboard TUI (Textual) de monitoring Raspberry Pi 5, en lecture seule, sans sudo.
 
-6 lignes empilées : valeur actuelle en gros à gauche (+ min/max/moyenne), courbe temporelle à droite.
-CPU %, température, fréquence CPU, throttling, RAM %, ventilateur (histogrammes par périodes de 10 s).
+7 lignes empilées : valeur actuelle en gros à gauche (+ min/max/moyenne), courbe temporelle à droite.
+
+De haut en bas :
+
+1. **CPU (%)** : charge globale.
+2. **Fréquence (MHz)** : fréquence actuelle du processeur.
+3. **Consommation (W)** : puissance estimée (somme tension × courant des rails du PMIC, via `vcgencmd pmic_read_adc`).
+4. **RAM (%)** : mémoire utilisée.
+5. **Température (°C)** : température CPU.
+6. **Ventilateur** : histogramme par périodes de 10 s (une activation d'une seconde est conservée).
+7. **Throttling** : sous-tension, fréquence bridée, throttle, limite de température (histogramme par périodes de 10 s).
 
 ![Dashboard rpi-monitor](screen.png)
 

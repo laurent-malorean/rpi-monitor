@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import math
 import random
+import re
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -46,6 +47,18 @@ def parse_throttled(raw: int) -> Throttle:
     now = tuple(n for b, n in _NOW_FLAGS.items() if raw >> b & 1)
     past = tuple(n for b, n in _NOW_FLAGS.items() if raw >> (b + _PAST_SHIFT) & 1)
     return Throttle(now, past)
+
+
+_PMIC_AMPS = re.compile(r"(\w+)_A current\(\d+\)=([\d.]+)A")
+_PMIC_VOLTS = re.compile(r"(\w+)_V volt\(\d+\)=([\d.]+)V")
+
+
+def parse_pmic_power(text: str) -> float | None:
+    """Puissance estimée (W) : somme tension x courant des rails ayant les deux mesures."""
+    amps = {k: float(v) for k, v in _PMIC_AMPS.findall(text)}
+    volts = {k: float(v) for k, v in _PMIC_VOLTS.findall(text)}
+    rails = amps.keys() & volts.keys()
+    return sum(amps[k] * volts[k] for k in rails) if rails else None
 
 
 def _read_int(path: Path | None) -> int | None:
@@ -124,6 +137,16 @@ class LinuxSensors:
             v = _read_int(self._temp_hwmon / "temp1_input")
         return None if v is None else v / 1000.0
 
+    def power_w(self) -> float | None:
+        if self.root != SYS or not shutil.which("vcgencmd"):
+            return None
+        try:  # lecture seule, sans sudo
+            out = subprocess.run(["vcgencmd", "pmic_read_adc"], capture_output=True,
+                                 text=True, timeout=2).stdout
+        except (OSError, subprocess.SubprocessError):
+            return None
+        return parse_pmic_power(out)
+
     def throttled(self) -> int | None:
         raw = _read_str(self._throttle_file) if self._throttle_file else None
         if raw is None and self.root == SYS and shutil.which("vcgencmd"):
@@ -176,6 +199,9 @@ class DemoSensors:
         target = 38 + 0.45 * self._cpu
         self._temp += (target - self._temp) * 0.05 + random.uniform(-0.3, 0.3)
         return self._temp
+
+    def power_w(self) -> float:
+        return 2.5 + 4.0 * (self._cpu / 100) + random.uniform(-0.1, 0.1)
 
     def throttled(self) -> int:
         return 0x8 if self._temp > 54 else 0

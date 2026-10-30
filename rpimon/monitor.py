@@ -20,6 +20,7 @@ class Monitor:
             "temp": RingBuffer(HISTORY_S),
             "freq": RingBuffer(HISTORY_S),
             "ram": RingBuffer(HISTORY_S),
+            "power": RingBuffer(HISTORY_S),
             "fan": BucketSeries(bucket_s=10, maxlen=HISTORY_S // 10),
             "throttle": BucketSeries(bucket_s=10, maxlen=HISTORY_S // 10),
         }
@@ -68,6 +69,7 @@ class Monitor:
                     "temp": self._safe(self.sensors.temperature_c),
                     "freq": self._safe(self.sensors.cpu_freq_mhz),
                     "ram": self._safe(self.sensors.ram_percent),
+                    "power": self._safe(getattr(self.sensors, "power_w", lambda: None)),
                 }
                 raw = self._safe(getattr(self.sensors, "throttled", lambda: None))
                 thr = None if raw is None else parse_throttled(raw)

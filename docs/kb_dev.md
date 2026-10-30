@@ -9,3 +9,5 @@
 - **Fichiers non versionnés** : captures d'écran et `.DS_Store` ignorés par git.
 - **Throttling Pi** : lire `get_throttled` en sysfs (`devices/platform/*/get_throttled`) avant de lancer `vcgencmd` ; le fallback `vcgencmd` n'est tenté que sur le vrai `/sys` pour que les tests ne dépendent pas de la machine.
 - **Lignes compactes** : une ligne binaire (throttling) n'a pas besoin du gros chiffre ; `Spec.compact` la ramène à 5 lignes pour que 6 indicateurs tiennent dans ~35 lignes de terminal.
+- **Consommation Pi 5** : `vcgencmd pmic_read_adc` (lecture seule, sans sudo) ; appariement des rails `_A`/`_V` par nom, `EXT5V_V` exclu car sans courant. Comme le throttling, appelé seulement sur le vrai `/sys` pour garder les tests indépendants de la machine.
+- **Hauteur de terminal** : 7 indicateurs demandent ~40 lignes ; en dessous, les lignes à gros chiffre se compriment.

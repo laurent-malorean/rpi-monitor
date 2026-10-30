@@ -16,6 +16,7 @@ from rpimon.widgets import Lane, Spec, throttle_summary
 SPECS = [
     Spec("cpu", "CPU", "%", "green", decimals=0, fixed=(0, 100)),
     Spec("freq", "Fréquence", "MHz", "cyan", decimals=0, min_span=400),
+    Spec("power", "Consommation", "W", "bright_yellow", decimals=2, min_span=2),
     Spec("ram", "RAM", "%", "magenta", decimals=1, fixed=(0, 100)),
     Spec("temp", "Température", "°C", "red", decimals=1, min_span=10),
     Spec("fan", "Ventilateur", "tr/min", "yellow", bars=True, fixed=(0, 1), step_s=10.0),
